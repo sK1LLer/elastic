@@ -476,7 +476,50 @@ chown -R elasticsearch:elasticsearch /var/log/elasticsearch*
 echo "Выполняем пункт 18 из инструкции"
 echo "Патчим elastic"
 ##########################################################################
-yes | cp /root/elk-update/x-pack-core-8.7.1.jar /usr/share/elasticsearch/modules/x-pack-core/x-pack-core-8.7.1.jar
+#yes | cp /root/elk-update/x-pack-core-8.7.1.jar /usr/share/elasticsearch/modules/x-pack-core/x-pack-core-8.7.1.jar
+cat > /root/license.sh << END
+#!/bin/bash
+systemctl stop kibana && systemctl stop elasticsearch
+VERSION=\$(ls /usr/share/elasticsearch/modules/x-pack-core/x-pack-core-* | rev | cut -d/ -f1 | rev | sed "s|x-pack-core-||g" | sed "s|.jar||g")
+cat >/root/LicenseVerifier.java <<EOF
+package org.elasticsearch.license;
+public class LicenseVerifier {
+ public static boolean verifyLicense(final License license, byte[] publicKeyData) {
+     return true;
+ }
+ public static boolean verifyLicense(final License license) {
+     return true;
+ }
+}
+EOF
+/usr/share/elasticsearch/jdk/bin/javac -cp /usr/share/elasticsearch/modules/x-pack-core/x-pack-core-\$VERSION.jar /root/LicenseVerifier.java
+mkdir -p /root/elkpatch/org/elasticsearch/license
+mv /root/LicenseVerifier.class /root/elkpatch/org/elasticsearch/license
+/usr/share/elasticsearch/jdk/bin/jar -uf /usr/share/elasticsearch/modules/x-pack-core/x-pack-core-\$VERSION.jar -C /root/elkpatch org/elasticsearch/license/LicenseVerifier.class
+rm -rf elkpatch LicenseVerifier.java
+
+#sudo /usr/share/elasticsearch/bin/elasticsearch-reset-password -u elastic &>elastic_password.file<<EOF
+#y
+#EOF
+#elastic_password=\$(cat elastic_password.file| grep "New value:" | sed "s|New value: ||g")
+cat > license.json << EOF
+{
+	"license": {
+    	"uid": "00000000-aaaa-1111-2222-bbbbbbbbbbbb",
+    	"type": "enterprise",
+    	"issue_date_in_millis": 0,
+    	"expiry_date_in_millis": 2524597200000,
+    	"max_resource_units": 10000,
+    	"issued_to": "Vitaliy Kurnosenko",
+    	"issuer": "GOD",
+    	"signature": "AAAABQAAAA0sKPJdf9T6DItbXVJKAAAAIAo5/x6hrsGh1GqqrJmy4qgmEC7gK0U4zQ6q5ZEMhm4jAAABAKFCHrix7w/xPG14+wdhld1RmphDmXmHfL1xeuI33Ahr1mOUYZ30eR6GZuh7CnK8BQhfq+z63lgctJepWlvwDSgkOvXWLHrJun7YSCrzz1bism0ZHWw7Swb9DO7vePomVBo/Hm9+eX0pV4/cFQNMmbFaX11tqJZYBEO6sNASVAFL7A1ZcVoB2evweGU9pUQYvFvmyzzySf99miDo3NH0XYdownEdtoNgFfmqa3+koCP7onmRZ1h9jhsDOi30RX/DTDXQKW+XoREnOHCoOAJFxwip/c1qaQAOqp1H6+P20ZGr2sIPiU97OVEU9kulm+E+jgiVW3LwGheOXsUOd1B8Mp0=",
+    	"start_date_in_millis": 1570000000000
+	}
+}
+EOF
+END
+chmod +x /root/license.sh
+/root/license.sh
 
 ##########################################################################
 echo "Выполняем пункт 19 из инструкции"

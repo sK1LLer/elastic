@@ -225,6 +225,8 @@ elif [ \$NUM -eq "4" ]; then
 fi
 /usr/bin/cgcreate -t elasticsearch:elasticsearch -a elasticsearch:elasticsearch -g memory:elastic\${NUM}
 /usr/bin/cgset -r memory.limit_in_bytes=59055800320 elastic\${NUM}
+#cgroup v2
+/usr/bin/cgset -r memory.max=59055800320 elastic\${NUM}
 EOF
 
 chmod 755 /usr/local/bin/cgroup_prep.sh
